@@ -26,7 +26,7 @@
 
 #include <rdr/types.h>
 
-#include <miniaudio.h>
+#include "miniaudio.h"
 
 class GenericAudioOutput {
 

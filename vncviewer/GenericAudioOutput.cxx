@@ -42,7 +42,6 @@ GenericAudioOutput::GenericAudioOutput()
     bufFreeSize(0), bufUnsubmittedSize(0), bufSubmittedHead(0), bufUnsubmittedHead(0),
     extraDelayInMillisec(0)
 {
-
   rdr::U32 s_freq         = 22050;
   rdr::U8 bits_per_sample = 16;
   rdr::U8 n_channels      = 2;
@@ -112,7 +111,7 @@ bool GenericAudioOutput::openAndAllocateBuffer()
   aDevConfig.sampleRate         = samplingFreq;
   aDevConfig.dataCallback       = GenericAudioOutput::audioOutCallback;
 //  aDevConfig.performanceProfile = ma_performance_profile_conservative;
-  aDevConfig.noFixedSizedCallback = TRUE;
+  aDevConfig.noFixedSizedCallback = true;
 //  aDevConfig.periodSizeInMilliseconds = 20;
   aDevConfig.pUserData         = this;
 
@@ -129,7 +128,6 @@ bool GenericAudioOutput::openAndAllocateBuffer()
 
 void GenericAudioOutput::addSilentSamples(size_t numberOfSamples)
 {
-
   if (openedGO) {
     size_t bytes_left_to_add = numberOfSamples * getSampleSize();
     while (bytes_left_to_add != 0) {
