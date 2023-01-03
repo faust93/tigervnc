@@ -22,6 +22,7 @@ add_executable(vncviewer
   keysym2ucs.c
   touch.cxx
   MonitorIndicesParameter.cxx
+  GenericAudioOutput.cxx
   vncviewer.cxx)
 
 if(WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -55,7 +56,7 @@ endif()
 target_link_libraries(vncviewer rfb network rdr os ${FLTK_LIBRARIES} ${GETTEXT_LIBRARIES})
 
 if(WIN32)
-  target_link_libraries(vncviewer msimg32)
+  target_link_libraries(vncviewer msimg32 winmm)
 elseif(APPLE)
   target_link_libraries(vncviewer "-framework Cocoa")
   target_link_libraries(vncviewer "-framework Carbon")

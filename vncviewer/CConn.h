@@ -29,6 +29,8 @@ namespace network { class Socket; }
 
 class DesktopWindow;
 
+class GenericAudioOutput;
+
 class CConn : public rfb::CConnection
 {
 public:
@@ -73,6 +75,13 @@ public:
   virtual void handleClipboardAnnounce(bool available);
   virtual void handleClipboardData(const char* data);
 
+  virtual bool   audioInitAndGetFormat(rdr::U8* sampleFormat,
+                                       rdr::U8* channels,
+                                       rdr::U32* samplingFreq);
+  virtual size_t audioSampleSize();
+  virtual void   audioNotifyStreamingStartStop(bool isStart);
+  virtual size_t audioAddSamples(const rdr::U8* data, size_t size);
+
 private:
 
   void resizeFramebuffer();
@@ -90,6 +99,7 @@ private:
   network::Socket* sock;
 
   DesktopWindow *desktop;
+  GenericAudioOutput *genericAudioOutput;
 
   unsigned updateCount;
   unsigned pixelCount;

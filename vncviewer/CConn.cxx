@@ -56,6 +56,8 @@
 #include "win32.h"
 #endif
 
+#include "GenericAudioOutput.h"
+
 using namespace rdr;
 using namespace rfb;
 using namespace std;
@@ -77,6 +79,7 @@ static const unsigned bpsEstimateWindow = 1000;
 
 CConn::CConn(const char* vncServerName, network::Socket* socket=NULL)
   : serverHost(0), serverPort(0), desktop(NULL),
+    genericAudioOutput(NULL),
     updateCount(0), pixelCount(0),
     lastServerEncoding((unsigned int)-1), bpsEstimate(20000000)
 {
@@ -122,6 +125,13 @@ CConn::CConn(const char* vncServerName, network::Socket* socket=NULL)
   setServerName(serverHost);
   setStreams(&sock->inStream(), &sock->outStream());
 
+  genericAudioOutput = new GenericAudioOutput();
+  supportsAudio = genericAudioOutput->isAvailable();
+  if (!supportsAudio) {
+    delete genericAudioOutput;
+    genericAudioOutput = NULL;
+  }
+
   initialiseProtocol();
 
   OptionsDialog::addCallback(handleOptions, this);
@@ -133,6 +143,9 @@ CConn::~CConn()
 
   OptionsDialog::removeCallback(handleOptions);
   Fl::remove_timeout(handleUpdateTimeout, this);
+
+  if (genericAudioOutput)
+    delete genericAudioOutput;
 
   if (desktop)
     delete desktop;
@@ -470,6 +483,43 @@ void CConn::handleClipboardData(const char* data)
   desktop->handleClipboardData(data);
 }
 
+bool CConn::audioInitAndGetFormat(rdr::U8* sampleFormat,
+                                  rdr::U8* channels,
+                                  rdr::U32* samplingFreq)
+{
+  if (genericAudioOutput) {
+    if (genericAudioOutput->isOpened() || genericAudioOutput->openAndAllocateBuffer()) {
+      (*sampleFormat) = genericAudioOutput->getSampleFormat();
+      (*channels)     = genericAudioOutput->getNumberOfChannels();
+      (*samplingFreq) = genericAudioOutput->getSamplingFreq();
+      return true;
+    } else {
+      delete genericAudioOutput;
+      genericAudioOutput = NULL;
+    }
+  }
+  return false;
+}
+
+size_t CConn::audioSampleSize()
+{
+  if (genericAudioOutput)
+    return genericAudioOutput->getSampleSize();
+  return 1;
+}
+
+void CConn::audioNotifyStreamingStartStop(bool isStart)
+{
+  if (genericAudioOutput)
+    return genericAudioOutput->notifyStreamingStartStop(isStart);
+}
+
+size_t CConn::audioAddSamples(const rdr::U8* data, size_t size)
+{
+  if (genericAudioOutput)
+    return genericAudioOutput->addSamples(data, size);
+  return size;
+}
 
 ////////////////////// Internal methods //////////////////////
 
