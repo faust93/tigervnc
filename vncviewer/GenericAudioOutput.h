@@ -61,6 +61,7 @@ class GenericAudioOutput {
 
     bool           haveGO, openedGO, cb_lock;
     ma_device      aDev;
+    ma_uint32      frameBytes;
     rdr::U8        sampleFormat, numberOfChannels;
     rdr::U32       samplingFreq;
     rdr::U8*       bufPtr;

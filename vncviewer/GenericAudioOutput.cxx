@@ -58,26 +58,33 @@ void GenericAudioOutput::audioOutCallback(ma_device* pDevice, void* pOutput, con
 {
   GenericAudioOutput* gaSelf = reinterpret_cast<GenericAudioOutput*>(pDevice->pUserData);
 
-  if(!gaSelf->bufUnsubmittedSize || gaSelf->cb_lock)
+  if(!gaSelf->bufUnsubmittedSize) // || gaSelf->cb_lock)
     return;
 
-  ma_uint32 fbytes = frameCount * ma_get_bytes_per_frame(pDevice->playback.format, pDevice->playback.channels);
+  gaSelf->frameBytes = frameCount * ma_get_bytes_per_frame(pDevice->playback.format, pDevice->playback.channels);
 
   size_t io_bytes = gaSelf->bufUnsubmittedSize;
-  if(io_bytes > fbytes)
-     io_bytes = fbytes;
+  if(io_bytes > gaSelf->frameBytes)
+     io_bytes = gaSelf->frameBytes;
 
-  if(gaSelf->bufSubmittedHead + io_bytes > gaSelf->bufTotalSize)
-     io_bytes = gaSelf->bufTotalSize - gaSelf->bufSubmittedHead;
+  size_t pOutOffset = 0;
+  size_t bytes_left_to_copy = io_bytes;
+  while (bytes_left_to_copy != 0) {
+      size_t bytes_to_copy = bytes_left_to_copy;
 
-  if(!io_bytes)
-    return;
+      if (bytes_to_copy + gaSelf->bufSubmittedHead > gaSelf->bufTotalSize)
+        bytes_to_copy = gaSelf->bufTotalSize - gaSelf->bufSubmittedHead;
+      if (bytes_to_copy == 0)
+        return;
 
-  MA_COPY_MEMORY(pOutput, gaSelf->bufPtr + gaSelf->bufSubmittedHead, io_bytes);
+      MA_COPY_MEMORY((rdr::U8*)pOutput + pOutOffset, gaSelf->bufPtr + gaSelf->bufSubmittedHead, bytes_to_copy);
+      gaSelf->bufSubmittedHead = ((gaSelf->bufSubmittedHead + bytes_to_copy) & (gaSelf->bufTotalSize - 1));
+      pOutOffset += bytes_to_copy;
+      bytes_left_to_copy -= bytes_to_copy;
+      gaSelf->bufUnsubmittedSize -= bytes_to_copy;
+      gaSelf->bufFreeSize += bytes_to_copy;
+  }
 
-  gaSelf->bufSubmittedHead = ((gaSelf->bufSubmittedHead + io_bytes) & (gaSelf->bufTotalSize - 1));
-  gaSelf->bufUnsubmittedSize -= io_bytes;
-  gaSelf->bufFreeSize += io_bytes;
 }
 
 bool GenericAudioOutput::openAndAllocateBuffer()
@@ -111,8 +118,8 @@ bool GenericAudioOutput::openAndAllocateBuffer()
   aDevConfig.sampleRate         = samplingFreq;
   aDevConfig.dataCallback       = GenericAudioOutput::audioOutCallback;
 //  aDevConfig.performanceProfile = ma_performance_profile_conservative;
-  aDevConfig.noFixedSizedCallback = true;
-//  aDevConfig.periodSizeInMilliseconds = 20;
+//  aDevConfig.noFixedSizedCallback = true;
+  aDevConfig.periodSizeInMilliseconds = 20;
   aDevConfig.pUserData         = this;
 
   if (ma_device_init(NULL, &aDevConfig, &aDev) != MA_SUCCESS)
@@ -150,9 +157,9 @@ void GenericAudioOutput::addSilentSamples(size_t numberOfSamples)
 
 size_t GenericAudioOutput::addSamples(const rdr::U8* data, size_t size)
 {
-  /* unsibmitted buffer throttle */
-  if (bufUnsubmittedSize > size * getSampleSize())
-      return size;
+  /* unsubmitted buffer drain */
+  if (bufUnsubmittedSize > frameBytes * 5) {
+     return size;
 
   cb_lock = true;
   if (openedGO) {
