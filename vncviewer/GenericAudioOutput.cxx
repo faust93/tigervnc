@@ -158,7 +158,7 @@ void GenericAudioOutput::addSilentSamples(size_t numberOfSamples)
 size_t GenericAudioOutput::addSamples(const rdr::U8* data, size_t size)
 {
   /* unsubmitted buffer drain */
-  if (bufUnsubmittedSize > frameBytes * 5) {
+  if (bufUnsubmittedSize > frameBytes * 5)
      return size;
 
   cb_lock = true;
